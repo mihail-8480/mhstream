@@ -33,7 +33,7 @@ public class FfmpegMp3Convert : IAudioConvert
                 "mp3",
                 "pipe:1"
             }
-        }, token);
+        }, "audio/mpeg", token);
 
         if (ffmpeg is not IPipe pipe) return null;
         var ffmpegInput = pipe.Pipe();
@@ -46,7 +46,7 @@ public class FfmpegMp3Convert : IAudioConvert
             return Task.CompletedTask;
         }, token));
 
-        return new ResourceProxy(new StreamResource(ffmpegOutput, false), ffmpeg);
+        return new ResourceProxy(new StreamResource(ffmpegOutput, "audio/mpeg", false), ffmpeg);
 
     }
 }

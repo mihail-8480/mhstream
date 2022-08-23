@@ -23,4 +23,9 @@ public class ResourceProxy : IResource
     {
         return _resource.GetStream(token);
     }
+
+    public string GetContentType()
+    {
+        return _resource.GetContentType();
+    }
 }

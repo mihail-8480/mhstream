@@ -8,10 +8,12 @@ namespace MhStream.Impl;
 public class YtAudioFileProvider : IAudioProvider<string>
 {
     private readonly IResourceProvider<ProcessStartInfo> _resourceProvider;
+    private readonly IHttpClientFactory _factory;
 
-    public YtAudioFileProvider(IResourceProvider<ProcessStartInfo> resourceProvider)
+    public YtAudioFileProvider(IResourceProvider<ProcessStartInfo> resourceProvider, IHttpClientFactory factory)
     {
         _resourceProvider = resourceProvider;
+        _factory = factory;
     }
     public async Task<IAudioFile> GetAudioFile(string url, CancellationToken token)
     {
@@ -23,11 +25,11 @@ public class YtAudioFileProvider : IAudioProvider<string>
                 "-j",
                 url,
             }
-        }, token);
+        }, "application/json", token);
 
         var stream = await processResource.GetStream(token);
 
         var metadata = await JsonSerializer.DeserializeAsync<YtMetadata>(stream, cancellationToken: token);
-        return metadata == null ? null : new YtAudioFile(metadata, _resourceProvider);
+        return metadata == null ? null : new YtAudioFile(metadata, _resourceProvider, _factory);
     }
 }

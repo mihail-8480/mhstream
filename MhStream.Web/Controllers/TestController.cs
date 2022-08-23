@@ -1,27 +1,41 @@
 using System.Threading.Tasks;
-using MhStream.Impl;
+using MhStream.Abstract;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MhStream.Web.Controllers;
 
-[Route("play")]
+[Route("")]
 public class TestController : Controller
 {
-    [Route("{id}"), HttpGet]
+    private readonly IAudioProvider<string> _audioProvider;
+    public TestController(IAudioProvider<string> audioProvider)
+    {
+        _audioProvider = audioProvider;
+
+    }
+    
+    
+    [Route("thumb/{id}")]
+    public async Task<IActionResult> Thumb(string id)
+    {
+        var audioFile = await _audioProvider.GetAudioFile($"https://www.youtube.com/watch?v={id}",
+            Request.HttpContext.RequestAborted);
+        var resource = await audioFile.GetThumbnail(Request.HttpContext.RequestAborted);
+        var stream = await resource.GetStream(Request.HttpContext.RequestAborted);
+        var res = File(stream, resource.GetContentType());
+        res.EnableRangeProcessing = true;
+        return res;
+    }
+    
+    [Route("play/{id}"), HttpGet]
     public async Task<IActionResult> Play(string id)
     {
-        // todo: use dependency injection & a hosted service
-        var resourceProvider = new ProcessResourceProvider();
-        var ytAudioFileProvider = new YtAudioFileProvider(resourceProvider);
-        var mp3Convert = new FfmpegMp3Convert(resourceProvider);
-
-        var converted = new ConvertedAudioFileProvider<string>(ytAudioFileProvider, mp3Convert);
-        var audioFile = await converted.GetAudioFile($"https://www.youtube.com/watch?v={id}", Request.HttpContext.RequestAborted);
+        var audioFile = await _audioProvider.GetAudioFile($"https://www.youtube.com/watch?v={id}", Request.HttpContext.RequestAborted);
         using var resource = await audioFile.GetResource(Request.HttpContext.RequestAborted);
         var stream = await resource.GetStream(Request.HttpContext.RequestAborted);
 
-        var res = File(stream, "audio/mp3");
-        //res.EnableRangeProcessing = true;
+        var res = File(stream, resource.GetContentType());
+        res.EnableRangeProcessing = true;
         return res;
     }
 }
