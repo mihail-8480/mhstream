@@ -19,8 +19,8 @@ public class ResourceProxy : IResource
         _disposable.Dispose();
     }
 
-    public Task<Stream> GetStream()
+    public Task<Stream> GetStream(CancellationToken token)
     {
-        return _resource.GetStream();
+        return _resource.GetStream(token);
     }
 }

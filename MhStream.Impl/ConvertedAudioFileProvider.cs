@@ -13,10 +13,10 @@ public class ConvertedAudioFileProvider<T> : IAudioProvider<T>
         _convert = convert;
     }
     
-    public async Task<IAudioFile> GetAudioFile(T url)
+    public async Task<IAudioFile> GetAudioFile(T url, CancellationToken token)
     {
-        var audioFile = await _audioProvider.GetAudioFile(url);
-        var converted = await _convert.Convert(audioFile);
+        var audioFile = await _audioProvider.GetAudioFile(url, token);
+        var converted = await _convert.Convert(audioFile, token);
         return new AudioFileProxy(converted, audioFile);
     }
 }

@@ -12,7 +12,7 @@ public class StreamResource : IResource
         _stream = stream;
         _close = close;
     }
-    public Task<Stream> GetStream()
+    public Task<Stream> GetStream(CancellationToken token)
     {
         return Task.FromResult(_stream);
     }

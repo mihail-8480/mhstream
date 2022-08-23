@@ -13,13 +13,13 @@ public class AudioFileProxy : IAudioFile
         _audioFile = audioFile;
     }
 
-    public Task<IResource> GetResource()
+    public Task<IResource> GetResource(CancellationToken token)
     {
         return Task.FromResult(_resource);
     }
 
-    public Task<IResource> GetThumbnail()
+    public Task<IResource> GetThumbnail(CancellationToken token)
     {
-        return _audioFile.GetThumbnail();
+        return _audioFile.GetThumbnail(token);
     }
 }

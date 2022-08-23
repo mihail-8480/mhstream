@@ -11,10 +11,10 @@ public class FfmpegMp3Convert : IAudioConvert
     {
         _resourceProvider = resourceProvider;
     }
-    public async Task<IResource> Convert(IAudioFile file)
+    public async Task<IResource> Convert(IAudioFile file, CancellationToken token)
     {
-        var audioResource = await file.GetResource();
-        var audioStream = await audioResource.GetStream(); 
+        var audioResource = await file.GetResource(token);
+        var audioStream = await audioResource.GetStream(token); 
         var ffmpeg = await _resourceProvider.GetResource(new ProcessStartInfo
         {
             FileName = "/usr/bin/ffmpeg",
@@ -33,18 +33,18 @@ public class FfmpegMp3Convert : IAudioConvert
                 "mp3",
                 "pipe:1"
             }
-        });
+        }, token);
 
         if (ffmpeg is not IPipe pipe) return null;
         var ffmpegInput = pipe.Pipe();
-        var ffmpegOutput = await ffmpeg.GetStream();
-        var ffmpegInputStream = await ffmpegInput.GetStream();
-        _ = Task.Run(() => audioStream.CopyToAsync(ffmpegInputStream).ContinueWith(_ =>
+        var ffmpegOutput = await ffmpeg.GetStream(token);
+        var ffmpegInputStream = await ffmpegInput.GetStream(token);
+        _ = Task.Run(() => audioStream.CopyToAsync(ffmpegInputStream, token).ContinueWith(_ =>
         {
             ffmpegInputStream.Close();
             audioResource.Dispose();
             return Task.CompletedTask;
-        }));
+        }, token));
 
         return new ResourceProxy(new StreamResource(ffmpegOutput, false), ffmpeg);
 

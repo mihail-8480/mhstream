@@ -15,7 +15,7 @@ public class YtAudioFile : IAudioFile<YtMetadata>
         _resourceProvider = resourceProvider;
     }
 
-    public Task<YtMetadata> GetMetadata()
+    public Task<YtMetadata> GetMetadata(CancellationToken token)
     {
         return Task.FromResult(_metadata);
     }
@@ -31,7 +31,7 @@ public class YtAudioFile : IAudioFile<YtMetadata>
         return formats.MaxBy(x => x.Abr)?.FormatId ?? _metadata.FormatId;
     }
     
-    public Task<IResource> GetResource()
+    public Task<IResource> GetResource(CancellationToken token)
     {
         return _resourceProvider.GetResource(new ProcessStartInfo
         {
@@ -44,10 +44,10 @@ public class YtAudioFile : IAudioFile<YtMetadata>
                 "-o",
                 "-"
             }
-        });    
+        }, token);    
     }
 
-    public Task<IResource> GetThumbnail()
+    public Task<IResource> GetThumbnail(CancellationToken token)
     {
         throw new NotImplementedException();
     }

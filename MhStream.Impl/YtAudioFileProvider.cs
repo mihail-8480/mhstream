@@ -13,7 +13,7 @@ public class YtAudioFileProvider : IAudioProvider<string>
     {
         _resourceProvider = resourceProvider;
     }
-    public async Task<IAudioFile> GetAudioFile(string url)
+    public async Task<IAudioFile> GetAudioFile(string url, CancellationToken token)
     {
         using var processResource = await _resourceProvider.GetResource(new ProcessStartInfo
         {
@@ -23,11 +23,11 @@ public class YtAudioFileProvider : IAudioProvider<string>
                 "-j",
                 url,
             }
-        });
+        }, token);
 
-        var stream = await processResource.GetStream();
+        var stream = await processResource.GetStream(token);
 
-        var metadata = await JsonSerializer.DeserializeAsync<YtMetadata>(stream);
+        var metadata = await JsonSerializer.DeserializeAsync<YtMetadata>(stream, cancellationToken: token);
         return metadata == null ? null : new YtAudioFile(metadata, _resourceProvider);
     }
 }
