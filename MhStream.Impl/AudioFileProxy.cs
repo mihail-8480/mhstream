@@ -22,4 +22,7 @@ public class AudioFileProxy : IAudioFile
     {
         return _audioFile.GetThumbnail(token);
     }
+
+    public string Title => _audioFile.Title;
+    public string Artist => _audioFile.Artist;
 }

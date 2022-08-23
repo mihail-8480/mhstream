@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 using MhStream.Abstract;
 using MhStream.Data;
 
@@ -55,4 +56,62 @@ public class YtAudioFile : IAudioFile<YtMetadata>
         var stream = await httpClient.GetStreamAsync(_metadata.Thumbnails.MaxBy(x => x.Height * x.Width)?.Url, token);
         return new StreamResource(stream, "image/jpeg",true);
     }
+
+
+    private string TrimmedTitle()
+    {
+        return _metadata.Title
+            .Replace("official music video", "", StringComparison.CurrentCultureIgnoreCase)
+            .Replace("official video", "", StringComparison.CurrentCultureIgnoreCase)
+            .Replace("[]", "")
+            .Replace("()", "");
+    }
+    
+    private string GetTitle()
+    {
+        var title = TrimmedTitle();
+        if (title.Contains(']'))
+        {
+            title = title.Split(']')[1];
+        }
+        if (title.Contains('『'))
+        {
+            var split = title.Split("』");
+            return split[0].Split("『")[1].Trim();
+        }
+        if (!title.Contains('-')) return title;
+        var index = title.IndexOf('-');
+        return title[(index + 1)..].Trim();
+
+    }
+
+    private string GetArtist()
+    {
+        var title = TrimmedTitle();
+        if (title.Contains(']'))
+        {
+            title = title.Split(']')[1];
+        }
+        if (title.Contains('『'))
+        {
+            var builder = new StringBuilder();
+            var split = title.Split("』");
+            builder.Append(split[0].Split("『")[0]);
+            foreach (var part in split.Skip(1))
+            {
+                builder.Append(' ');
+                builder.Append(part);
+            }
+
+            return builder.ToString().Trim();
+
+        }
+
+        if (!title.Contains('-')) return _metadata.Channel;
+        var index = title.IndexOf('-');
+        return title[..index].Trim();
+    }
+
+    public string Title => GetTitle();
+    public string Artist => GetArtist();
 }
