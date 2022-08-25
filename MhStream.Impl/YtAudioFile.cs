@@ -8,16 +8,16 @@ using SixLabors.ImageSharp.Processing;
 
 namespace MhStream.Impl;
 
-public class YtAudioFile : IAudioFile<YtMetadata>
+public class YtAudioFile : IAudioFile
 {
     private readonly IConfiguration _configuration;
     private readonly YtMetadata _metadata;
-    private readonly IResourceProvider<ProcessStartInfo> _resourceProvider;
+    private readonly IResourceProvider<ProcessStartInfo, Process> _resourceProvider;
     private readonly IHttpClientFactory _factory;
     private readonly IMetadata _parsedMetadata;
 
     public YtAudioFile(string id, IConfiguration configuration, YtMetadata metadata,
-        IResourceProvider<ProcessStartInfo> resourceProvider, IHttpClientFactory factory,
+        IResourceProvider<ProcessStartInfo, Process> resourceProvider, IHttpClientFactory factory,
         IMetadataParser<YtMetadata> metadataParser)
     {
         Id = id;
@@ -28,10 +28,6 @@ public class YtAudioFile : IAudioFile<YtMetadata>
         _parsedMetadata = metadataParser.Parse(metadata);
     }
 
-    public Task<YtMetadata> GetMetadata(CancellationToken token)
-    {
-        return Task.FromResult(_metadata);
-    }
 
     private string FindOptimalAudioFormatId()
     {
@@ -45,9 +41,9 @@ public class YtAudioFile : IAudioFile<YtMetadata>
         return formats.MaxBy(x => x.Abr)?.FormatId ?? _metadata.FormatId;
     }
 
-    public Task<IResource> GetResource(CancellationToken token)
+    public async Task<(Stream, IEnumerable<IDisposable>)> GetResource(CancellationToken token)
     {
-        return _resourceProvider.GetResource(new ProcessStartInfo
+        var (process, enumerable) = await _resourceProvider.GetResource(new ProcessStartInfo
         {
             FileName = _configuration["Binaries:youtube-dl"],
             ArgumentList =
@@ -60,20 +56,26 @@ public class YtAudioFile : IAudioFile<YtMetadata>
                 "-"
             }
         }, "audio/webm", token);
+        return (process.StandardOutput.BaseStream, enumerable);
     }
 
-    public async Task<IResource> GetThumbnail(CancellationToken token)
+    public async Task<(Stream, IEnumerable<IDisposable>)> GetThumbnail(CancellationToken token)
     {
         using var httpClient = _factory.CreateClient();
-        var stream = await httpClient.GetStreamAsync(_metadata.Thumbnails.MaxBy(x => x.Height * x.Width)?.Url, token);
+        await using var stream = await httpClient.GetStreamAsync(_metadata.Thumbnails.MaxBy(x => x.Height * x.Width)?.Url, token);
 
         using var image = await Image.LoadAsync(stream, token);
 
         var offset = (image.Width - image.Height) / 2;
         image.Mutate(i => i.Crop(new Rectangle(offset, 0, image.Height, image.Height)));
+        
         var saveStream = new MemoryStream();
         await image.SaveAsync(saveStream, new JpegEncoder(), token);
-        return new StreamResource(saveStream, "image/jpeg", true);
+        
+        return (saveStream, new []
+        {
+            saveStream
+        });
     }
 
     public string Title => _parsedMetadata.Title;

@@ -12,28 +12,35 @@ namespace MhStream.Web.Controllers;
 public class AudioController : EventStreamController
 {
     private readonly ConvertedAudioFileProvider<string> _provider;
+    private readonly IAudioProvider<string> _normalProvider;
     private readonly IDataUrlProvider _dataUrlProvider;
     private readonly IPlaylistProvider _playlistProvider;
 
     public AudioController(ConvertedAudioFileProvider<string> provider, IDataUrlProvider dataUrlProvider,
-        IPlaylistProvider playlistProvider)
+        IPlaylistProvider playlistProvider, IAudioProvider<string> normalProvider)
     {
         _provider = provider;
         _dataUrlProvider = dataUrlProvider;
         _playlistProvider = playlistProvider;
+        _normalProvider = normalProvider;
     }
 
     [Route("playlist/{playlistId}"), HttpGet]
     public async Task PlaylistMetadata(string playlistId)
     {
         await StartEventStream();
-        await foreach (var audioFile in _playlistProvider.GetFiles(playlistId, Request.HttpContext.RequestAborted))
+        await foreach (var (audioFile, disposables) in _playlistProvider.GetFiles(playlistId, Request.HttpContext.RequestAborted))
         {
             try
             {
-                using var thumbnail = await audioFile.GetThumbnail(Request.HttpContext.RequestAborted);
-                var url = await _dataUrlProvider.GetDataUrl(thumbnail, Request.HttpContext.RequestAborted);
-
+                if (audioFile == null)
+                {
+                    continue;
+                }
+                
+                var thumbnail = Consume(await audioFile.GetThumbnail(Request.HttpContext.RequestAborted));
+                var url = Consume(await _dataUrlProvider.GetDataUrl(thumbnail, Request.HttpContext.RequestAborted));
+                
                 await SendData(JsonSerializer.Serialize(new
                 {
                     id = audioFile.Id,
@@ -47,6 +54,13 @@ public class AudioController : EventStreamController
                 await SendComment(e.ToString());
                 return;
             }
+            finally
+            {
+                foreach (var disposable in disposables)
+                {
+                    HttpContext.Response.RegisterForDispose(disposable);
+                }
+            }
         }
     }
 
@@ -55,9 +69,9 @@ public class AudioController : EventStreamController
     {
         try
         {
-            var audioFile = await _provider.GetAudioFile(id, Request.HttpContext.RequestAborted);
-            using var thumbnail = await audioFile.GetThumbnail(Request.HttpContext.RequestAborted);
-            var url = await _dataUrlProvider.GetDataUrl(thumbnail, Request.HttpContext.RequestAborted);
+            var audioFile = Consume(await _normalProvider.GetAudioFile(id, Request.HttpContext.RequestAborted));
+            await using var thumbnail = Consume(await audioFile.GetThumbnail(Request.HttpContext.RequestAborted));
+            var url = Consume(await _dataUrlProvider.GetDataUrl(thumbnail, Request.HttpContext.RequestAborted));
             return Json(new
             {
                 title = audioFile.Title,
@@ -78,14 +92,22 @@ public class AudioController : EventStreamController
     {
         try
         {
-            var audioFile = await _provider.GetAudioFile(id, Request.HttpContext.RequestAborted);
-            using var resource = await audioFile.GetResource(Request.HttpContext.RequestAborted);
-            var stream = await resource.GetStream(Request.HttpContext.RequestAborted);
-            return File(stream, resource.GetContentType());
+            var audioFile = Consume(await _provider.GetAudioFile(id, Request.HttpContext.RequestAborted));
+            var resource = Consume(await audioFile.GetResource(Request.HttpContext.RequestAborted));
+            return File(resource, "audio/mpeg");
         }
         catch (Exception e)
         {
             return BadRequest(e.Message);
         }
+    }
+
+    [Route("connection-check"), HttpGet]
+    public IActionResult Check()
+    {
+        return Json(new
+        {
+            app = "mhstream"
+        });
     }
 }

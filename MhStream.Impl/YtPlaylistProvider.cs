@@ -9,12 +9,12 @@ namespace MhStream.Impl;
 
 public class YtPlaylistProvider : IPlaylistProvider
 {
-    private readonly IResourceProvider<ProcessStartInfo> _resourceProvider;
+    private readonly IResourceProvider<ProcessStartInfo, Process> _resourceProvider;
     private readonly IHttpClientFactory _factory;
     private readonly IMetadataParser<YtMetadata> _metadataParser;
     private readonly IConfiguration _configuration;
 
-    public YtPlaylistProvider(IResourceProvider<ProcessStartInfo> resourceProvider, IHttpClientFactory factory,
+    public YtPlaylistProvider(IResourceProvider<ProcessStartInfo, Process> resourceProvider, IHttpClientFactory factory,
         IMetadataParser<YtMetadata> metadataParser, IConfiguration configuration)
     {
         _resourceProvider = resourceProvider;
@@ -23,10 +23,10 @@ public class YtPlaylistProvider : IPlaylistProvider
         _configuration = configuration;
     }
 
-    public async IAsyncEnumerable<IAudioFile> GetFiles(string playlistId,
+    public async IAsyncEnumerable<(IAudioFile, IEnumerable<IDisposable>)> GetFiles(string playlistId,
         [EnumeratorCancellation] CancellationToken token)
     {
-        using var processResource = await _resourceProvider.GetResource(new ProcessStartInfo
+        var (process, disposables) = await _resourceProvider.GetResource(new ProcessStartInfo
         {
             FileName = _configuration["Binaries:youtube-dl"],
             ArgumentList =
@@ -38,8 +38,9 @@ public class YtPlaylistProvider : IPlaylistProvider
             }
         }, "application/json", token);
 
+        yield return (null, disposables);
 
-        var jsonReader = new JsonTextReader(new StreamReader(await processResource.GetStream(token)))
+        using var jsonReader = new JsonTextReader(new StreamReader(process.StandardOutput.BaseStream))
         {
             SupportMultipleContent = true
         };
@@ -49,8 +50,9 @@ public class YtPlaylistProvider : IPlaylistProvider
         {
             var metadata = jsonSerializer.Deserialize<YtMetadata>(jsonReader);
             if (metadata == null) continue;
-            yield return new YtAudioFile(metadata.Id, _configuration, metadata, _resourceProvider, _factory,
-                _metadataParser);
+            yield return (new YtAudioFile(metadata.Id, _configuration, metadata, _resourceProvider, _factory,
+                _metadataParser), ArraySegment<IDisposable>.Empty);
         }
+
     }
 }

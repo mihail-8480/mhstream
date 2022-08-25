@@ -2,5 +2,5 @@ namespace MhStream.Abstract;
 
 public interface IPlaylistProvider
 {
-    public IAsyncEnumerable<IAudioFile> GetFiles(string playlistId, CancellationToken token);
+    public IAsyncEnumerable<(IAudioFile, IEnumerable<IDisposable>)> GetFiles(string playlistId, CancellationToken token);
 }

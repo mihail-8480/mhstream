@@ -1,6 +1,6 @@
 namespace MhStream.Abstract;
 
-public interface IResourceProvider<in T>
+public interface IResourceProvider<in T, TResource>
 {
-    public Task<IResource> GetResource(T resource, string contentType, CancellationToken token);
+    public Task<(TResource,IEnumerable<IDisposable>)> GetResource(T resource, string contentType, CancellationToken token);
 }

@@ -1,30 +1,34 @@
+using System.Collections.Immutable;
 using System.Diagnostics;
 using MhStream.Abstract;
 
 namespace MhStream.Impl;
 
-public class ProcessResourceProvider : IResourceProvider<ProcessStartInfo>
+public class ProcessResourceProvider : IResourceProvider<ProcessStartInfo, Process>
 {
-    public Task<IResource> GetResource(ProcessStartInfo resource, string contentType, CancellationToken token)
+    public Task<(Process, IEnumerable<IDisposable>)> GetResource(ProcessStartInfo resource, string contentType, CancellationToken token)
     {
         resource.RedirectStandardOutput = true;
         resource.RedirectStandardInput = true;
         var process = Process.Start(resource);
-        token.Register(() =>
-        {
-            try
-            {
-                if (process is not {HasExited: false}) return;
-                process.Kill();
-            }
-            catch
-            {
-                // ignored
-            }
-        });
+
 
         return process != null
-            ? Task.FromResult<IResource>(new ProcessResource(process, contentType))
-            : Task.FromResult<IResource>(null);
+            ? Task.FromResult<(Process, IEnumerable<IDisposable>)>((process, new []{new Disposable(() =>
+            {
+                try
+                {
+                    process.Kill();
+                }
+                catch
+                {
+                    // ignored
+                }
+                finally
+                {
+                    process.Dispose();
+                }
+            })}))
+            : Task.FromResult<(Process, IEnumerable<IDisposable>)>((null, ImmutableArray<IDisposable>.Empty));
     }
 }

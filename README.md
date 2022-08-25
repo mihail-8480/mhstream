@@ -3,6 +3,17 @@ A YouTube mp3 streaming proxy built using ASP.NET Core, youtube-dl and ffmpeg.
 
 ## API Reference
 
+### Connection Check
+```ts
+GET /connection-chek
+Content-Type: application/json
+{
+    "app": "mhstream"
+}
+```
+
+Gives you the ability to check if the server is a MhStream server.
+
 ### Metadata
 ```ts
 GET /metadata/{id:string}

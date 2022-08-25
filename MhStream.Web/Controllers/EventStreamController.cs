@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -6,6 +8,16 @@ namespace SportDetect.Controllers;
 
 public class EventStreamController : Controller
 {
+    protected T Consume<T>(ValueTuple<T, IEnumerable<IDisposable>> tuple)
+    {
+        foreach (var disposable in tuple.Item2)
+        {
+            HttpContext.Response.RegisterForDispose(disposable);
+        }
+
+        return tuple.Item1;
+    }
+    
     [NonAction]
     protected async Task SendData(string data)
     {

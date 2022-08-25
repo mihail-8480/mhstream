@@ -2,5 +2,5 @@ namespace MhStream.Abstract;
 
 public interface IAudioConvert
 {
-    public Task<IResource> Convert(IAudioFile file, CancellationToken token);
+    public Task<(Stream, IEnumerable<IDisposable>)> Convert(IAudioFile file, CancellationToken token);
 }

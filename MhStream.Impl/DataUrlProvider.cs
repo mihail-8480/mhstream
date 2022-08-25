@@ -5,25 +5,28 @@ namespace MhStream.Impl;
 
 public class DataUrlProvider : IDataUrlProvider
 {
-    public async Task<string> GetDataUrl(IResource resource, CancellationToken token)
+    public async Task<(string, IEnumerable<IDisposable>)> GetDataUrl(Stream resource, CancellationToken token)
     {
-        var stream = await resource.GetStream(token);
-        if (stream is not MemoryStream)
+        if (resource is not MemoryStream)
         {
             var ms = new MemoryStream();
-            await stream.CopyToAsync(ms, token);
-            stream = ms;
+            await resource.CopyToAsync(ms, token);
+            await resource.DisposeAsync();
+            resource = ms;
         }
 
-        await using var memoryStream = stream as MemoryStream;
+        await using var memoryStream = (MemoryStream) resource;
         var array = memoryStream.ToArray();
 
         var sb = new StringBuilder();
         sb.Append("data:")
-            .Append(resource.GetContentType())
+            .Append("image/jpeg")
             .Append(";base64,")
             .Append(Convert.ToBase64String(array));
 
-        return sb.ToString();
+        return (sb.ToString(), new[]
+        {
+            resource
+        });
     }
 }

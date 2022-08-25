@@ -18,7 +18,7 @@ builder.Services.AddControllers();
 builder.Services.AddResponseCompression(options => { options.EnableForHttps = true; });
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<IMetadataParser<YtMetadata>, YtMedataParser>();
-builder.Services.AddSingleton<IResourceProvider<ProcessStartInfo>, ProcessResourceProvider>();
+builder.Services.AddSingleton<IResourceProvider<ProcessStartInfo, Process>, ProcessResourceProvider>();
 builder.Services.AddSingleton<IAudioProvider<string>, YtAudioFileProvider>();
 builder.Services.AddSingleton<IAudioConvert, FfmpegMp3Convert>();
 builder.Services.AddSingleton<IPlaylistProvider, YtPlaylistProvider>();
