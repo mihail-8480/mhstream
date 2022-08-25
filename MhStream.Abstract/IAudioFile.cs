@@ -1,4 +1,3 @@
-
 namespace MhStream.Abstract;
 
 public interface IAudioFile

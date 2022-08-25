@@ -14,6 +14,7 @@ public class StreamResource : IResource
         _contentType = contentType;
         _close = close;
     }
+
     public Task<Stream> GetStream(CancellationToken token)
     {
         return Task.FromResult(_stream);

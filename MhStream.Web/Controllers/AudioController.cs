@@ -15,7 +15,8 @@ public class AudioController : EventStreamController
     private readonly IDataUrlProvider _dataUrlProvider;
     private readonly IPlaylistProvider _playlistProvider;
 
-    public AudioController(ConvertedAudioFileProvider<string> provider, IDataUrlProvider dataUrlProvider, IPlaylistProvider playlistProvider)
+    public AudioController(ConvertedAudioFileProvider<string> provider, IDataUrlProvider dataUrlProvider,
+        IPlaylistProvider playlistProvider)
     {
         _provider = provider;
         _dataUrlProvider = dataUrlProvider;
@@ -41,16 +42,14 @@ public class AudioController : EventStreamController
                     image = url
                 }));
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 await SendComment(e.ToString());
                 return;
             }
-
         }
-        
     }
-    
+
     [Route("metadata/{id}"), HttpGet]
     public async Task<IActionResult> Metadata(string id)
     {
@@ -83,12 +82,10 @@ public class AudioController : EventStreamController
             using var resource = await audioFile.GetResource(Request.HttpContext.RequestAborted);
             var stream = await resource.GetStream(Request.HttpContext.RequestAborted);
             return File(stream, resource.GetContentType());
-
         }
         catch (Exception e)
         {
             return BadRequest(e.Message);
-
         }
     }
 }

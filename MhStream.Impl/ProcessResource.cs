@@ -13,7 +13,7 @@ public class ProcessResource : IResource, IPipe
         _process = process;
         _contentType = contentType;
     }
-    
+
     public Task<Stream> GetStream(CancellationToken token)
     {
         return Task.FromResult(_process.StandardOutput.BaseStream);

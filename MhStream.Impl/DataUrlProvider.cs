@@ -14,7 +14,7 @@ public class DataUrlProvider : IDataUrlProvider
             await stream.CopyToAsync(ms, token);
             stream = ms;
         }
-        
+
         await using var memoryStream = stream as MemoryStream;
         var array = memoryStream.ToArray();
 

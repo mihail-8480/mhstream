@@ -22,7 +22,7 @@ public class ProcessResourceProvider : IResourceProvider<ProcessStartInfo>
                 // ignored
             }
         });
-        
+
         return process != null
             ? Task.FromResult<IResource>(new ProcessResource(process, contentType))
             : Task.FromResult<IResource>(null);
