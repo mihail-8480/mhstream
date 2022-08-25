@@ -12,9 +12,14 @@ public class ProcessResourceProvider : IResourceProvider<ProcessStartInfo>
         var process = Process.Start(resource);
         token.Register(() =>
         {
-            if (!process?.HasExited == true)
+            try
             {
+                if (process is not {HasExited: false}) return;
                 process.Kill();
+            }
+            catch
+            {
+                // ignored
             }
         });
         

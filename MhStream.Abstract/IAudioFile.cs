@@ -7,6 +7,7 @@ public interface IAudioFile
     public Task<IResource> GetThumbnail(CancellationToken token);
     public string Title { get; }
     public string Artist { get; }
+    public string Id { get; }
 }
 
 public interface IAudioFile<T> : IAudioFile

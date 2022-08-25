@@ -1,7 +1,9 @@
 using System.Diagnostics;
-using System.Text;
 using MhStream.Abstract;
 using MhStream.Data;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Jpeg;
+using SixLabors.ImageSharp.Processing;
 
 namespace MhStream.Impl;
 
@@ -10,12 +12,15 @@ public class YtAudioFile : IAudioFile<YtMetadata>
     private readonly YtMetadata _metadata;
     private readonly IResourceProvider<ProcessStartInfo> _resourceProvider;
     private readonly IHttpClientFactory _factory;
+    private readonly IMetadata _parsedMetadata;
 
-    public YtAudioFile(YtMetadata metadata, IResourceProvider<ProcessStartInfo> resourceProvider, IHttpClientFactory factory)
+    public YtAudioFile(string id, YtMetadata metadata, IResourceProvider<ProcessStartInfo> resourceProvider, IHttpClientFactory factory, IMetadataParser<YtMetadata> metadataParser)
     {
+        Id = id;
         _metadata = metadata;
         _resourceProvider = resourceProvider;
         _factory = factory;
+        _parsedMetadata = metadataParser.Parse(metadata);
     }
 
     public Task<YtMetadata> GetMetadata(CancellationToken token)
@@ -41,6 +46,7 @@ public class YtAudioFile : IAudioFile<YtMetadata>
             FileName = "/usr/bin/youtube-dl",
             ArgumentList =
             {
+                "--quiet",
                 "-f",
                 FindOptimalAudioFormatId(),
                 _metadata.WebpageUrl,
@@ -54,64 +60,17 @@ public class YtAudioFile : IAudioFile<YtMetadata>
     {
         using var httpClient = _factory.CreateClient();
         var stream = await httpClient.GetStreamAsync(_metadata.Thumbnails.MaxBy(x => x.Height * x.Width)?.Url, token);
-        return new StreamResource(stream, "image/jpeg",true);
+
+        using var image = await Image.LoadAsync(stream, token);
+
+        var offset = (image.Width - image.Height) / 2;
+        image.Mutate(i => i.Crop(new Rectangle(offset, 0, image.Height, image.Height)));
+        var saveStream = new MemoryStream();
+        await image.SaveAsync(saveStream, new JpegEncoder(), token);
+        return new StreamResource(saveStream, "image/jpeg",true);
     }
 
-
-    private string TrimmedTitle()
-    {
-        return _metadata.Title
-            .Replace("official music video", "", StringComparison.CurrentCultureIgnoreCase)
-            .Replace("official video", "", StringComparison.CurrentCultureIgnoreCase)
-            .Replace("[]", "")
-            .Replace("()", "");
-    }
-    
-    private string GetTitle()
-    {
-        var title = TrimmedTitle();
-        if (title.Contains(']'))
-        {
-            title = title.Split(']')[1];
-        }
-        if (title.Contains('『'))
-        {
-            var split = title.Split("』");
-            return split[0].Split("『")[1].Trim();
-        }
-        if (!title.Contains('-')) return title;
-        var index = title.IndexOf('-');
-        return title[(index + 1)..].Trim();
-
-    }
-
-    private string GetArtist()
-    {
-        var title = TrimmedTitle();
-        if (title.Contains(']'))
-        {
-            title = title.Split(']')[1];
-        }
-        if (title.Contains('『'))
-        {
-            var builder = new StringBuilder();
-            var split = title.Split("』");
-            builder.Append(split[0].Split("『")[0]);
-            foreach (var part in split.Skip(1))
-            {
-                builder.Append(' ');
-                builder.Append(part);
-            }
-
-            return builder.ToString().Trim();
-
-        }
-
-        if (!title.Contains('-')) return _metadata.Channel;
-        var index = title.IndexOf('-');
-        return title[..index].Trim();
-    }
-
-    public string Title => GetTitle();
-    public string Artist => GetArtist();
+    public string Title => _parsedMetadata.Title;
+    public string Artist => _parsedMetadata.Artist;
+    public string Id { get; }
 }

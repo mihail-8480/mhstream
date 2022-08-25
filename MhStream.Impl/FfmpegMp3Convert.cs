@@ -13,7 +13,7 @@ public class FfmpegMp3Convert : IAudioConvert
     }
     public async Task<IResource> Convert(IAudioFile file, CancellationToken token)
     {
-        var audioResource = await file.GetResource(token);
+        using var audioResource = await file.GetResource(token);
         var audioStream = await audioResource.GetStream(token); 
         var ffmpeg = await _resourceProvider.GetResource(new ProcessStartInfo
         {
@@ -31,7 +31,10 @@ public class FfmpegMp3Convert : IAudioConvert
                 "192k",
                 "-f",
                 "mp3",
-                "pipe:1"
+                "pipe:1",
+                "-hide_banner",
+                "-loglevel",
+                "error"
             }
         }, "audio/mpeg", token);
 
@@ -44,7 +47,7 @@ public class FfmpegMp3Convert : IAudioConvert
             ffmpegInputStream.Close();
             audioResource.Dispose();
             return Task.CompletedTask;
-        }, token));
+        }, token), token);
 
         return new ResourceProxy(new StreamResource(ffmpegOutput, "audio/mpeg", false), ffmpeg);
 

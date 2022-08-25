@@ -25,4 +25,5 @@ public class AudioFileProxy : IAudioFile
 
     public string Title => _audioFile.Title;
     public string Artist => _audioFile.Artist;
+    public string Id => _audioFile.Id;
 }

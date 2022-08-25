@@ -13,9 +13,4 @@ public class YtThumbnail
     [JsonPropertyName("url")]
     public string Url { get; set; }
     
-    [JsonPropertyName("resolution")]
-    public string Resolution { get; set; }
-
-    [JsonPropertyName("id")]
-    public string Id { get; set; }
 }
