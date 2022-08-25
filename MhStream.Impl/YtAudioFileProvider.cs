@@ -8,12 +8,12 @@ namespace MhStream.Impl;
 
 public class YtAudioFileProvider : IAudioProvider<string>
 {
-    private readonly IResourceProvider<ProcessStartInfo> _resourceProvider;
+    private readonly IResourceProvider<ProcessStartInfo, Process> _resourceProvider;
     private readonly IConfiguration _configuration;
     private readonly IHttpClientFactory _factory;
     private readonly IMetadataParser<YtMetadata> _metadataParser;
 
-    public YtAudioFileProvider(IResourceProvider<ProcessStartInfo> resourceProvider, IConfiguration configuration,
+    public YtAudioFileProvider(IResourceProvider<ProcessStartInfo, Process> resourceProvider, IConfiguration configuration,
         IHttpClientFactory factory, IMetadataParser<YtMetadata> metadataParser)
     {
         _resourceProvider = resourceProvider;
@@ -22,9 +22,9 @@ public class YtAudioFileProvider : IAudioProvider<string>
         _metadataParser = metadataParser;
     }
 
-    public async Task<IAudioFile> GetAudioFile(string url, CancellationToken token)
+    public async Task<(IAudioFile, IEnumerable<IDisposable>)> GetAudioFile(string url, CancellationToken token)
     {
-        using var processResource = await _resourceProvider.GetResource(new ProcessStartInfo
+        var (process, disposables) = await _resourceProvider.GetResource(new ProcessStartInfo
         {
             FileName = _configuration["Binaries:youtube-dl"],
             ArgumentList =
@@ -35,11 +35,11 @@ public class YtAudioFileProvider : IAudioProvider<string>
             }
         }, "application/json", token);
 
-        var stream = await processResource.GetStream(token);
+        var stream = process.StandardOutput.BaseStream;
 
         var metadata = await JsonSerializer.DeserializeAsync<YtMetadata>(stream, cancellationToken: token);
         return metadata == null
-            ? null
-            : new YtAudioFile(url, _configuration, metadata, _resourceProvider, _factory, _metadataParser);
+            ? (null, ArraySegment<IDisposable>.Empty)
+            : (new YtAudioFile(url, _configuration, metadata, _resourceProvider, _factory, _metadataParser), disposables);
     }
 }
