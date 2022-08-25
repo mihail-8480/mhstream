@@ -5,7 +5,7 @@ A YouTube mp3 streaming proxy built using ASP.NET Core, youtube-dl and ffmpeg.
 
 ### Connection Check
 ```ts
-GET /connection-chek
+GET /connection-check
 Content-Type: application/json
 {
     "app": "mhstream"
